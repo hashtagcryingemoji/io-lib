@@ -3,6 +3,8 @@ global string_length
 global print_string
 global print_char
 global print_newline
+global print_uint
+global print_int
 section .text
  
  
@@ -53,3 +55,37 @@ print_char:
 print_newline:
     mov rdi, 0xA 
     jmp print_char
+
+; Выводит беззнаковое 8-байтовое число в десятичном формате 
+; Совет: выделите место в стеке и храните там результаты деления
+; Не забудьте перевести цифры в их ASCII коды.
+print_uint:
+    mov rax, rdi
+    mov r8, 10
+    sub rsp, 24
+    lea r9, [rsp + 23]
+    mov byte [r9], 0
+    .loop_pru:
+    xor rdx, rdx
+    div r8
+    add dl, '0'
+    dec r9
+    mov [r9], dl
+    test rax, rax
+    jnz .loop_pru
+
+    mov rdi, r9
+    call print_string
+    add rsp, 24
+    ret
+
+; Выводит знаковое 8-байтовое число в десятичном формате 
+print_int:
+    test rdi, rdi
+    jns print_uint ; если беззнаковое 
+    neg rdi ; превращаем в модуль
+    push rdi
+    mov rdi, '-'
+    call print_char
+    pop rdi
+    jmp print_uint
