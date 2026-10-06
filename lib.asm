@@ -5,6 +5,7 @@ global print_char
 global print_newline
 global print_uint
 global print_int
+global string_equals
 section .text
  
  
@@ -89,3 +90,37 @@ print_int:
     call print_char
     pop rdi
     jmp print_uint
+
+; Принимает два указателя на нуль-терминированные строки, возвращает 1 если они равны, 0 иначе
+string_equals:
+    push r12
+    push rsi
+    push rdi
+    call string_length
+    mov r12, rax ; длина первой строки в r12
+    mov rdi, [rsp + 8] ; указатель на вторую строку в rdi
+    call string_length
+    pop rdi
+    pop rsi
+    cmp rax, r12
+    jne .ne ; если не равны, то выходим
+    .loop_se:
+    cmp r12, 0
+    je .eq
+    dec r12
+    mov r10b, byte [rsi]
+    mov r11b, byte [rdi]
+    cmp r10b, r11b
+    jne .ne
+    inc rsi
+    inc rdi
+    jmp .loop_se
+    .eq:
+    mov rax, 1
+    jmp .return_se
+
+    .ne:
+    xor rax, rax
+    .return_se:
+    pop r12
+    ret
