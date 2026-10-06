@@ -9,6 +9,7 @@ global string_equals
 global read_char
 global parse_uint
 global parse_int
+global read_word
 section .text
  
  
@@ -147,6 +148,69 @@ read_char:
     
     .return_rc:
     ret 
+
+; Принимает: адрес начала буфера в rdi, размер буфера в rsi
+; Читает в буфер слово из stdin, пропуская пробельные символы в начале, .
+; Пробельные символы это пробел 0x20, табуляция 0x9 и перевод строки 0xA.
+; Останавливается и возвращает 0 если слово слишком большое для буфера
+; При успехе возвращает адрес буфера в rax, длину слова в rdx.
+; При неудаче возвращает 0 в rax
+; Эта функция должна дописывать к слову нуль-терминатор
+; будем идти по строке пока размер буфера не станет меньше нуля
+read_word:
+    push r12
+    xor r12, r12
+    sub rsp, 8
+    push rdi
+    push rsi
+    push 0 ; flag
+
+    .loop_rw:
+    cmp qword [rsp + 8], 0
+    jle .error_rw
+    call read_char ; char в rax
+    cmp rax, 0
+    je .end_rw
+    cmp qword [rsp + 8], 0
+    je .error_rw
+    cmp rax, 0x20
+    je .check_flag
+    cmp rax, 0x9
+    je .check_flag
+    cmp rax, 0xA 
+    je .check_flag
+    mov qword [rsp], 1
+    
+    .second_loop_rw:
+    mov r11, [rsp + 16]
+    mov [r11], al
+    inc qword [rsp + 16]
+    dec qword [rsp + 8]
+    inc r12
+    jmp .loop_rw
+    
+    .check_flag:
+    cmp qword [rsp], 0
+    jne .end_rw
+    jmp .loop_rw
+
+    .end_rw:
+    cmp qword [rsp + 8], 0
+    je .error_rw
+    mov r11, [rsp + 16]
+    mov byte [r11], 0
+    mov rax, [rsp + 16] 
+    sub rax, r12
+    mov rdx, r12
+    jmp .return_rw
+
+    .error_rw:
+    xor rax, rax
+
+    .return_rw:
+    add rsp, 32
+    pop r12
+    ret
 
 ; Принимает указатель на строку в rdi, пытается
 ; прочитать из её начала беззнаковое число.
