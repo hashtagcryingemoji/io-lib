@@ -6,6 +6,9 @@ global print_newline
 global print_uint
 global print_int
 global string_equals
+global read_char
+global parse_uint
+global parse_int
 section .text
  
  
@@ -124,3 +127,82 @@ string_equals:
     .return_se:
     pop r12
     ret
+
+; Читает один символ из stdin и возвращает его в rax. Возвращает 0 если достигнут конец потока
+read_char:
+    push 0 ; буффер
+    xor rax, rax
+    xor rdi, rdi
+    mov rsi, rsp
+    mov rdx, 1
+    syscall ; read 1 символа
+    cmp rax, -1
+    jne .success
+    xor rax, rax
+    add rsp, 8
+    jmp .return_rc
+    
+    .success:
+    pop rax
+    
+    .return_rc:
+    ret 
+
+; Принимает указатель на строку в rdi, пытается
+; прочитать из её начала беззнаковое число.
+; Возвращает в rax: число, rdx : его длину в символах
+; rdx = 0 если число прочитать не удалось
+parse_uint:
+    xor rdx, rdx
+    xor rax, rax
+
+    .loop_uint:
+    movzx r11, byte [rdi] ; текущий char в r11
+
+    cmp r11, '0'
+    jb .return_pu
+    cmp r11, '9'
+    ja .return_pu
+
+    sub r11, '0' ; перевод
+    imul rax, 10
+    add rax, r11
+    inc rdi
+    inc rdx
+    jmp .loop_uint
+    
+    .return_pu:
+    ret
+
+; Принимает указатель на строку, пытается
+; прочитать из её начала знаковое число.
+; Если есть знак, пробелы между ним и числом не разрешены.
+; Возвращает в rax: число, rdx : его длину в символах (включая знак, если он был) 
+; rdx = 0 если число прочитать не удалось
+parse_int:
+    xor rdx, rdx
+    xor rax, rax
+    
+    .loop_int:
+    movzx r11, byte [rdi]
+    push r11
+    cmp r11, '+'          ; в начале может быть знак '+', а может и не быть
+    je .sign_int
+    cmp r11, '-'
+    je .sign_int
+    call parse_uint
+    jmp .return_pi
+
+.sign_int:
+    inc rdi
+    call parse_uint
+    test rdx, rdx
+    jz .return_pi
+    inc rdx
+    cmp byte [rsp], '-'
+    jne .return_pi
+    neg rax
+    
+.return_pi:
+    add rsp, 8
+    ret  
