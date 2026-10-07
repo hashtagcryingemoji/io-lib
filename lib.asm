@@ -10,6 +10,7 @@ global read_char
 global parse_uint
 global parse_int
 global read_word
+global string_copy 
 section .text
  
  
@@ -270,3 +271,40 @@ parse_int:
 .return_pi:
     add rsp, 8
     ret  
+
+; Принимает указатель на строку (rdi), указатель на буфер (rsi) и длину буфера (rdx)
+; Копирует строку в буфер
+; Возвращает длину строки если она умещается в буфер, иначе 0
+string_copy:
+    push rdi
+    push rsi
+    push rdx
+    push r12
+    push r13
+    call string_length ; в rax длина строки
+    add rax, 1 ; /0
+    cmp rax, [rsp + 16] 
+    ja .invalid_string
+    mov [rsp + 16], rax
+    sub rax, 1
+    .loop_sc:
+    xor r11, r11
+    cmp r11, [rsp + 16]
+    je .return_sc
+    mov r11, [rsp + 32]
+    mov r12b, [r11]
+    mov r13, [rsp + 24]
+    mov [r13], r12b
+    inc qword [rsp + 24]
+    inc qword [rsp + 32]
+    dec qword [rsp + 16]
+    jmp .loop_sc
+
+    .invalid_string:
+    xor rax, rax
+
+    .return_sc:
+    pop r13
+    pop r12
+    add rsp, 24
+    ret
