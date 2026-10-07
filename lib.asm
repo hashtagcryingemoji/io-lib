@@ -138,13 +138,6 @@ read_char:
     mov rsi, rsp
     mov rdx, 1
     syscall ; read 1 символа
-    cmp rax, -1
-    jne .success
-    xor rax, rax
-    add rsp, 8
-    jmp .return_rc
-    
-    .success:
     pop rax
     
     .return_rc:
@@ -246,10 +239,6 @@ parse_uint:
 ; Возвращает в rax: число, rdx : его длину в символах (включая знак, если он был) 
 ; rdx = 0 если число прочитать не удалось
 parse_int:
-    xor rdx, rdx
-    xor rax, rax
-    
-    .loop_int:
     movzx r11, byte [rdi]
     push r11
     cmp r11, '+'          ; в начале может быть знак '+', а может и не быть
@@ -277,35 +266,32 @@ parse_int:
 ; Копирует строку в буфер
 ; Возвращает длину строки если она умещается в буфер, иначе 0
 string_copy:
-    push rdi
-    push rsi
-    push rdx
     push r12
     push r13
-    call string_length ; в rax длина строки
-    add rax, 1 ; /0
-    cmp rax, [rsp + 16] 
+    push r14
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    call string_length
+    add rax, 1 
+    cmp rax, r14 
     ja .invalid_string
-    mov [rsp + 16], rax
-    sub rax, 1
+    mov r14, rax
+    dec rax
     .loop_sc:
-    xor r11, r11
-    cmp r11, [rsp + 16]
-    je .return_sc
-    mov r11, [rsp + 32]
-    mov r12b, [r11]
-    mov r13, [rsp + 24]
-    mov [r13], r12b
-    inc qword [rsp + 24]
-    inc qword [rsp + 32]
-    dec qword [rsp + 16]
-    jmp .loop_sc
+    mov r11b, [r12]
+    mov [r13], r11b
+    inc r12
+    inc r13
+    dec r14
+    jnz .loop_sc
+    jmp .return_sc
 
     .invalid_string:
     xor rax, rax
 
     .return_sc:
+    pop r14
     pop r13
     pop r12
-    add rsp, 24
     ret
