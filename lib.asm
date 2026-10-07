@@ -152,7 +152,7 @@ read_char:
 
 ; Принимает: адрес начала буфера в rdi, размер буфера в rsi
 ; Читает в буфер слово из stdin, пропуская пробельные символы в начале, .
-; Пробельные символы это пробел 0x20, табуляция 0x9 и перевод строки 0xA.
+; Пробельные символы это пробел 0x20, табуляция 0x9 и перевод строки 0xA, а так же 0xD.
 ; Останавливается и возвращает 0 если слово слишком большое для буфера
 ; При успехе возвращает адрес буфера в rax, длину слова в rdx.
 ; При неудаче возвращает 0 в rax
@@ -160,56 +160,57 @@ read_char:
 ; будем идти по строке пока размер буфера не станет меньше нуля
 read_word:
     push r12
-    xor r12, r12
+    push r13
+    push r14 ; флаг
+    push r15
     sub rsp, 8
-    push rdi
-    push rsi
-    push 0 ; flag
-
+    xor r14, r14
+    xor r15, r15
+    mov r12, rsi
+    mov r13, rdi
+    
     .loop_rw:
-    cmp qword [rsp + 8], 0
+    cmp r12, 0
     jle .error_rw
     call read_char ; char в rax
     cmp rax, 0
     je .end_rw
-    cmp qword [rsp + 8], 0
-    je .error_rw
     cmp rax, 0x20
+    je .check_flag
+    cmp rax, 0xD
     je .check_flag
     cmp rax, 0x9
     je .check_flag
     cmp rax, 0xA 
     je .check_flag
-    mov qword [rsp], 1
-    
-    .second_loop_rw:
-    mov r11, [rsp + 16]
-    mov [r11], al
-    inc qword [rsp + 16]
-    dec qword [rsp + 8]
-    inc r12
+    mov r14, 1
+    mov [r13], al
+    inc r13
+    dec r12
+    inc r15
     jmp .loop_rw
     
     .check_flag:
-    cmp qword [rsp], 0
+    cmp r14, 0
     jne .end_rw
     jmp .loop_rw
 
     .end_rw:
-    cmp qword [rsp + 8], 0
-    je .error_rw
-    mov r11, [rsp + 16]
-    mov byte [r11], 0
-    mov rax, [rsp + 16] 
-    sub rax, r12
-    mov rdx, r12
+    mov byte [r13], 0
+    mov rax, r13
+    sub rax, r15
+    mov rdx, r15
     jmp .return_rw
 
     .error_rw:
     xor rax, rax
+    xor rdx, rdx
 
     .return_rw:
-    add rsp, 32
+    add rsp, 8
+    pop r15
+    pop r14
+    pop r13
     pop r12
     ret
 
